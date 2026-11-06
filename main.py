@@ -15,8 +15,9 @@ ROUND_SECONDS = 60
 PICKUP_LIMIT = 10
 
 windowed_size = (WIDTH, HEIGHT)
-fullscreen = False
-window = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
+fullscreen = True
+display_info = pygame.display.Info()
+window = pygame.display.set_mode((display_info.current_w, display_info.current_h), pygame.FULLSCREEN)
 screen = pygame.Surface((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
@@ -297,28 +298,41 @@ def update_portals(player, now):
             break
 
 def draw_background(surface, elapsed):
-    surface.fill(BG)
-    offset = int((elapsed * 12) % 32)
-    for x in range(-32 + offset, WIDTH, 32):
-        pygame.draw.line(surface, GRID, (x, 0), (x, HEIGHT), 1)
-    for y in range(-32 + offset, HEIGHT, 32):
-        pygame.draw.line(surface, GRID, (0, y), (WIDTH, y), 1)
-    pygame.draw.rect(surface, (20, 95, 120), ARENA, 2, border_radius=9)
-    pygame.draw.rect(surface, (20, 42, 68), ARENA.inflate(-8, -8), 1, border_radius=7)
+    surface.fill((5, 8, 20))
+    offset = int((elapsed * 9) % 40)
+    for x in range(-40 + offset, WIDTH, 40):
+        pygame.draw.line(surface, (12, 22, 40), (x, 0), (x, HEIGHT), 1)
+    for y in range(-40 + offset, HEIGHT, 40):
+        pygame.draw.line(surface, (12, 22, 40), (0, y), (WIDTH, y), 1)
+    for x in range(22, WIDTH, 80):
+        for y in range(125, HEIGHT - 25, 80):
+            pygame.draw.circle(surface, (18, 34, 54), (x, y), 1)
+
+    pygame.draw.rect(surface, (8, 15, 31), ARENA, border_radius=14)
+    pygame.draw.rect(surface, (18, 65, 91), ARENA, 2, border_radius=14)
+    pygame.draw.rect(surface, (13, 31, 52), ARENA.inflate(-8, -8), 1, border_radius=11)
     for wall in OBSTACLES:
-        pygame.draw.rect(surface, (24, 42, 68), wall, border_radius=5)
-        pygame.draw.rect(surface, (60, 135, 165), wall, 2, border_radius=5)
-        pygame.draw.line(surface, (40, 95, 125), wall.topleft, wall.bottomright, 1)
+        pygame.draw.rect(surface, (2, 5, 14), wall.move(0, 5), border_radius=7)
+        pygame.draw.rect(surface, (18, 34, 57), wall, border_radius=7)
+        pygame.draw.rect(surface, (42, 105, 137), wall, 2, border_radius=7)
+        pygame.draw.line(surface, (76, 153, 180),
+                         (wall.left + 6, wall.top + 3),
+                         (wall.right - 6, wall.top + 3), 1)
 
 def draw_hud(surface, p1, p2, seconds, now):
-    pygame.draw.rect(surface, (10, 16, 35), (0, 0, WIDTH, 96))
-    pygame.draw.line(surface, (30, 75, 100), (0, 95), (WIDTH, 95), 2)
-    text(surface, f"P1  {p1.score}", FONT, CYAN, (125, 34))
-    text(surface, f"COMBO x{p1.combo_multiplier(now)}", SMALL, CYAN, (125, 67))
-    text(surface, "PIXEL RIVALS", FONT, WHITE, (WIDTH // 2, 25))
-    text(surface, f"{max(0, math.ceil(seconds)):02d}", BIG, YELLOW, (WIDTH // 2, 66))
-    text(surface, f"P2  {p2.score}", FONT, PINK, (WIDTH - 125, 34))
-    text(surface, f"COMBO x{p2.combo_multiplier(now)}", SMALL, PINK, (WIDTH - 125, 67))
+    pygame.draw.rect(surface, (7, 12, 27), (0, 0, WIDTH, 99))
+    pygame.draw.line(surface, (26, 69, 94), (0, 98), (WIDTH, 98), 2)
+    pygame.draw.rect(surface, (10, 25, 43), (24, 12, 230, 72), border_radius=12)
+    pygame.draw.rect(surface, CYAN, (24, 12, 4, 72), border_radius=2)
+    pygame.draw.rect(surface, (31, 15, 39), (WIDTH - 254, 12, 230, 72), border_radius=12)
+    pygame.draw.rect(surface, PINK, (WIDTH - 28, 12, 4, 72), border_radius=2)
+    text(surface, f"JUGADOR 1   {p1.score}", FONT, CYAN, (139, 34))
+    text(surface, f"COMBO  x{p1.combo_multiplier(now)}", SMALL, (130, 190, 210), (139, 65))
+    text(surface, f"JUGADOR 2   {p2.score}", FONT, PINK, (WIDTH - 139, 34))
+    text(surface, f"COMBO  x{p2.combo_multiplier(now)}", SMALL, (220, 150, 195), (WIDTH - 139, 65))
+    text(surface, "PIXEL RIVALS", SMALL, (145, 170, 195), (WIDTH // 2, 19))
+    text(surface, f"{max(0, math.ceil(seconds)):02d}", BIG, YELLOW, (WIDTH // 2, 59))
+    text(surface, MAP_NAME, SMALL, (100, 130, 160), (WIDTH // 2, 85))
 
 def apply_pickup(player, item, now, particles, golden_rush=False, opponent=None):
     color = Pickup.COLORS[item.kind]
@@ -387,7 +401,7 @@ def main():
                 windowed_size = (max(640, event.w), max(480, event.h))
                 window = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F11:
+                if event.key == pygame.K_F11 or (event.key == pygame.K_RETURN and (pygame.key.get_mods() & pygame.KMOD_ALT)):
                     if fullscreen:
                         fullscreen = False
                         window = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
@@ -420,14 +434,17 @@ def main():
         draw_background(screen, elapsed)
 
         if state == "menu":
-            text(screen, "PIXEL", TITLE, CYAN, (WIDTH//2, 190))
-            text(screen, "RIVALS", TITLE, PINK, (WIDTH//2, 275))
+            pygame.draw.rect(screen, (8, 16, 34), (115, 120, 730, 455), border_radius=24)
+            pygame.draw.rect(screen, (28, 65, 92), (115, 120, 730, 455), 2, border_radius=24)
+            text(screen, "PIXEL", TITLE, CYAN, (WIDTH//2, 205))
+            text(screen, "RIVALS", TITLE, PINK, (WIDTH//2, 285))
             text(screen, "DOS JUGADORES  /  UNA ARENA", FONT, WHITE, (WIDTH//2, 350))
-            text(screen, "COLECCIONA, USA PORTALES Y SABOTEA A TU RIVAL", SMALL, (170, 195, 215), (WIDTH//2, 395))
-            text(screen, "P1: WASD", FONT, CYAN, (WIDTH//2 - 120, 455))
-            text(screen, "P2: FLECHAS", FONT, PINK, (WIDTH//2 + 120, 455))
-            text(screen, "ENTER PARA JUGAR", MEDIUM, YELLOW, (WIDTH//2, 530))
-            text(screen, "60 SEGUNDOS | DASH: F / CTRL DER. | F11: PANTALLA COMPLETA", SMALL, (150, 170, 195), (WIDTH//2, 570))
+            text(screen, "RECOLECTÁ  •  ESQUIVÁ  •  SUPERÁ A TU RIVAL", SMALL, (160, 190, 215), (WIDTH//2, 395))
+            pygame.draw.line(screen, (32, 67, 91), (245, 425), (715, 425), 1)
+            text(screen, "P1  WASD   +   DASH F", FONT, CYAN, (WIDTH//2 - 155, 465))
+            text(screen, "P2  FLECHAS   +   CTRL DER.", FONT, PINK, (WIDTH//2 + 155, 465))
+            text(screen, "ENTER  ·  COMENZAR", MEDIUM, YELLOW, (WIDTH//2, 525))
+            text(screen, "F11 / ALT+ENTER  ·  CAMBIAR PANTALLA", SMALL, (150, 170, 195), (WIDTH//2, 555))
 
         elif state in ("countdown", "playing", "paused"):
             if state == "countdown":
@@ -530,7 +547,7 @@ def main():
                 text(screen, "PAUSA", TITLE, WHITE, (WIDTH//2, HEIGHT//2 - 25))
                 text(screen, "ESPACIO PARA CONTINUAR  |  R PARA REINICIAR", SMALL, WHITE, (WIDTH//2, HEIGHT//2 + 40))
             else:
-                text(screen, "DASH: F / CTRL DER. | PORTALES: TELETRANSPORTE | ESC: PAUSA | R: RESET", SMALL, (150, 170, 195), (WIDTH//2, HEIGHT - 15))
+                text(screen, "DASH: F / CTRL DER.  |  ESC: PAUSA  |  R: REINICIAR  |  F11: VENTANA", SMALL, (150, 170, 195), (WIDTH//2, HEIGHT - 15))
 
         elif state == "finished":
             draw_hud(screen, p1, p2, 0, now)
@@ -546,12 +563,9 @@ def main():
             text(screen, "ENTER: NUEVA PARTIDA", MEDIUM, YELLOW, (WIDTH//2, 470))
             text(screen, "ESC: SALIR", SMALL, (160, 180, 205), (WIDTH//2, 515))
 
-        window.fill((0, 0, 0))
         ww, wh = window.get_size()
-        scale = min(ww / WIDTH, wh / HEIGHT)
-        scaled_size = (max(1, int(WIDTH * scale)), max(1, int(HEIGHT * scale)))
-        frame = pygame.transform.scale(screen, scaled_size)
-        window.blit(frame, ((ww - scaled_size[0]) // 2, (wh - scaled_size[1]) // 2))
+        frame = pygame.transform.smoothscale(screen, (ww, wh))
+        window.blit(frame, (0, 0))
         pygame.display.flip()
 
     pygame.quit()
