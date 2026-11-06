@@ -7,14 +7,17 @@ import pygame
 # P1: WASD | P2: Flechas | ENTER: jugar | ESC: pausa | R: reiniciar
 
 pygame.init()
-pygame.display.set_caption("PIXEL RIVALS 2.2")
+pygame.display.set_caption("PIXEL RIVALS 2.3")
 
 WIDTH, HEIGHT = 960, 640
 FPS = 60
 ROUND_SECONDS = 60
 PICKUP_LIMIT = 10
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+windowed_size = (WIDTH, HEIGHT)
+fullscreen = False
+window = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
+screen = pygame.Surface((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
 FONT = pygame.font.Font(None, 30)
@@ -35,13 +38,42 @@ ORANGE = (255, 145, 65)
 BLUE = (85, 145, 255)
 
 ARENA = pygame.Rect(34, 112, WIDTH - 68, HEIGHT - 148)
-OBSTACLES = [
-    pygame.Rect(ARENA.centerx - 105, ARENA.top + 92, 210, 22),
-    pygame.Rect(ARENA.centerx - 105, ARENA.bottom - 114, 210, 22),
-    pygame.Rect(ARENA.left + 190, ARENA.centery - 66, 22, 132),
-    pygame.Rect(ARENA.right - 212, ARENA.centery - 66, 22, 132),
-    pygame.Rect(ARENA.centerx - 11, ARENA.centery - 34, 22, 68),
-]
+OBSTACLES = []
+MAP_NAMES = ["CRUZ", "ISLAS", "CARRILES", "FORTALEZA", "LABERINTO"]
+
+def generate_map():
+    """Devuelve un diseño aleatorio con zonas libres para jugadores y portales."""
+    cx, cy = ARENA.centerx, ARENA.centery
+    left, right = ARENA.left, ARENA.right
+    top, bottom = ARENA.top, ARENA.bottom
+    layouts = [
+        [pygame.Rect(cx - 105, cy - 11, 210, 22),
+         pygame.Rect(cx - 11, top + 105, 22, 105),
+         pygame.Rect(cx - 11, cy + 70, 22, 105)],
+        [pygame.Rect(left + 235, top + 95, 22, 115),
+         pygame.Rect(left + 235, bottom - 210, 22, 115),
+         pygame.Rect(right - 257, top + 95, 22, 115),
+         pygame.Rect(right - 257, bottom - 210, 22, 115),
+         pygame.Rect(cx - 65, cy - 11, 130, 22)],
+        [pygame.Rect(cx - 150, top + 115, 180, 22),
+         pygame.Rect(cx - 30, bottom - 137, 180, 22),
+         pygame.Rect(left + 330, cy - 55, 22, 110),
+         pygame.Rect(right - 352, cy - 55, 22, 110)],
+        [pygame.Rect(cx - 95, cy - 95, 190, 18),
+         pygame.Rect(cx - 95, cy + 77, 190, 18),
+         pygame.Rect(cx - 95, cy - 77, 18, 70),
+         pygame.Rect(cx + 77, cy - 77, 18, 70)],
+        [pygame.Rect(left + 270, top + 100, 150, 20),
+         pygame.Rect(right - 420, bottom - 120, 150, 20),
+         pygame.Rect(left + 270, bottom - 120, 20, 90),
+         pygame.Rect(right - 290, top + 30, 20, 90),
+         pygame.Rect(cx - 11, cy - 45, 22, 90)],
+    ]
+    index = random.randrange(len(layouts))
+    return layouts[index], MAP_NAMES[index]
+
+MAP_NAME = "CRUZ"
+
 
 def text(surface, value, font, color, center):
     image = font.render(str(value), True, color)
@@ -232,16 +264,18 @@ def new_pickup():
     return Pickup()
 
 def reset_game():
+    global OBSTACLES, PORTALS, MAP_NAME
+    OBSTACLES, MAP_NAME = generate_map()
+    PORTALS = [
+        (ARENA.left + 72, ARENA.top + 70),
+        (ARENA.right - 72, ARENA.bottom - 70),
+    ]
     p1 = Player(ARENA.left + 75, ARENA.centery, CYAN,
                 (pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s), "JUGADOR 1")
     p2 = Player(ARENA.right - 75, ARENA.centery, PINK,
                 (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN), "JUGADOR 2")
     return p1, p2, [new_pickup() for _ in range(8)], ROUND_SECONDS, "countdown", 0, 3.0, [], [], 5.0
 
-PORTALS = [
-    (ARENA.left + 72, ARENA.top + 70),
-    (ARENA.right - 72, ARENA.bottom - 70),
-]
 
 def draw_portals(surface, elapsed):
     for i, (x, y) in enumerate(PORTALS):
@@ -348,8 +382,22 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.VIDEORESIZE and not fullscreen:
+                windowed_size = (max(640, event.w), max(480, event.h))
+                window = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_F11:
+                    if fullscreen:
+                        fullscreen = False
+                        window = pygame.display.set_mode(windowed_size, pygame.RESIZABLE)
+                    else:
+                        windowed_size = window.get_size()
+                        fullscreen = True
+                        info = pygame.display.Info()
+                        window = pygame.display.set_mode(
+                            (info.current_w, info.current_h), pygame.FULLSCREEN
+                        )
+                elif event.key == pygame.K_ESCAPE:
                     if state in ("playing", "countdown"):
                         state = "paused"
                     elif state == "paused":
@@ -378,7 +426,7 @@ def main():
             text(screen, "P1: WASD", FONT, CYAN, (WIDTH//2 - 120, 455))
             text(screen, "P2: FLECHAS", FONT, PINK, (WIDTH//2 + 120, 455))
             text(screen, "ENTER PARA JUGAR", MEDIUM, YELLOW, (WIDTH//2, 530))
-            text(screen, "60 SEGUNDOS | DASH: F / CTRL DER. | PORTALES: TELETRANSPORTE", SMALL, (150, 170, 195), (WIDTH//2, 570))
+            text(screen, "60 SEGUNDOS | DASH: F / CTRL DER. | F11: PANTALLA COMPLETA", SMALL, (150, 170, 195), (WIDTH//2, 570))
 
         elif state in ("countdown", "playing", "paused"):
             if state == "countdown":
@@ -497,6 +545,12 @@ def main():
             text(screen, "ENTER: NUEVA PARTIDA", MEDIUM, YELLOW, (WIDTH//2, 470))
             text(screen, "ESC: SALIR", SMALL, (160, 180, 205), (WIDTH//2, 515))
 
+        window.fill((0, 0, 0))
+        ww, wh = window.get_size()
+        scale = min(ww / WIDTH, wh / HEIGHT)
+        scaled_size = (max(1, int(WIDTH * scale)), max(1, int(HEIGHT * scale)))
+        frame = pygame.transform.scale(screen, scaled_size)
+        window.blit(frame, ((ww - scaled_size[0]) // 2, (wh - scaled_size[1]) // 2))
         pygame.display.flip()
 
     pygame.quit()
