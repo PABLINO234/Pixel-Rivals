@@ -369,6 +369,7 @@ def draw_status(surface, player, now, x, color):
         text(surface, " | ".join(active), SMALL, color, (x, HEIGHT - 15))
 
 def main():
+    global window, windowed_size, fullscreen
     p1, p2, pickups, time_left, state, elapsed, countdown, particles, mines, mine_timer = reset_game()
     running = True
     golden_rush = False
